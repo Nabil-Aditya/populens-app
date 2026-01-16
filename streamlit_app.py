@@ -140,6 +140,10 @@ df['natural_increase'] = df['value_birth'] - df['value_death']
 df.columns = df.columns.str.replace('value_birth', 'birth_rate')
 df.columns = df.columns.str.replace('value_death', 'death_rate')
 
+# Clean invalid values
+df = df.replace([float('inf'), float('-inf')], pd.NA)
+df = df.dropna(subset=['birth_rate', 'death_rate'])
+
 # Get latest year data for metrics
 latest_year = df['year'].max()
 latest_data = df[df['year'] == latest_year]
@@ -373,13 +377,31 @@ else:  # Komparasi
     
     # Scatter plot
     st.markdown("#### 📊 Birth Rate vs Death Rate Correlation")
+    
+    # Clean data untuk scatter plot (remove NaN dan infinite values)
+    scatter_data = latest_data.dropna(subset=['birth_rate', 'death_rate', 'natural_increase'])
+    scatter_data = scatter_data[
+        (scatter_data['natural_increase'].notna()) & 
+        (scatter_data['natural_increase'] != float('inf')) & 
+        (scatter_data['natural_increase'] != float('-inf'))
+    ]
+    
+    # Gunakan absolute value untuk size agar selalu positif
+    scatter_data['size_value'] = scatter_data['natural_increase'].abs() + 1
+    
     fig_scatter = px.scatter(
-        latest_data,
+        scatter_data,
         x='death_rate',
         y='birth_rate',
-        size='natural_increase',
+        size='size_value',
         color='natural_increase',
         hover_name='country',
+        hover_data={
+            'death_rate': ':.2f',
+            'birth_rate': ':.2f',
+            'natural_increase': ':.2f',
+            'size_value': False
+        },
         color_continuous_scale='RdYlGn',
         color_continuous_midpoint=0,
         labels={
